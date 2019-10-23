@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "693656691219",
+    "firebase_url": "https://pugchat-sa.firebaseio.com",
+    "project_id": "pugchat-sa",
+    "storage_bucket": "pugchat-sa.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:693656691219:android:df4155fca925f4b70855e6",
+        "android_client_info": {
+          "package_name": "pugchat.mobile1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "693656691219-oud9itve0q0usnc7rjvtcgi96vra7206.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_Ke6NCiCuGeSD9gHtsKTDjDN7kxYN-JQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "693656691219-oud9itve0q0usnc7rjvtcgi96vra7206.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
