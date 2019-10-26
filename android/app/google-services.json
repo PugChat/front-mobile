@@ -8,9 +8,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:693656691219:android:df4155fca925f4b70855e6",
+        "mobilesdk_app_id": "1:693656691219:android:d8073b9c2b3ace7f0855e6",
         "android_client_info": {
-          "package_name": "pugchat.mobile1"
+          "package_name": "com.example.pugchat"
         }
       },
       "oauth_client": [
