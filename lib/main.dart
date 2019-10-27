@@ -1,8 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:graphql_flutter/graphql_flutter.dart' as prefix0;
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(AuxHome());
+
+class AuxHome extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final HttpLink httplink = HttpLink(uri: "http://192.168.0.17:5000/graphql");
+    final ValueNotifier<GraphQLClient> client = ValueNotifier<GraphQLClient>(
+      GraphQLClient(
+        link: httplink as Link,
+        cache: OptimisticCache(dataIdFromObject: typenameDataIdFromObject),
+      ),
+    );
+    return GraphQLProvider(
+      child: MyApp(),
+      client: client,
+    );
+  }
+}
 
 class MyApp extends StatelessWidget {
   @override
@@ -80,6 +101,17 @@ class MyHomePage extends StatelessWidget {
                 },
               )
             ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              CustomButton(
+                text: "Saltarse todo xd",
+                callback: () {
+                  Navigator.of(context).pushNamed(Chat.id);
+                },
+              )
+            ],
           )
         ],
       ),
@@ -121,34 +153,53 @@ class Registration extends StatefulWidget {
 }
 
 class _RegistrationState extends State<Registration> {
-  String email;
-  String password;
+  Dio jotaro = new Dio();
+  Response response;
+  String _username = "";
+  String _email = "";
+  String _password = "";
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  var id_user;
 
-  Future<void> registerUser() async {
-    FirebaseUser user = (await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password
-    )) as FirebaseUser;
-    
+  void createUserMSAuth() async {
+    try {
+      response = await jotaro.post(
+          "http://192.168.0.17:3000/signup/" + _username + "/" + _password);
+      print(response);
+    } catch (err) {
+      print(err);
+    }
+    try {
+      response =
+          await jotaro.post("http://192.168.0.17:4002/users/create", data: {
+        "username": _username,
+        "password": _password,
+        "mail": _email,
+        "verification": true,
+        "active": true,
+        "password_confirmation": _password
+      });
+      //saveUserId(response.data['id']);
+      id_user = response.data['id'];
+      print(id_user);
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setString('username', _username);
+      prefs.setString('id_user', id_user);
+    } catch (err) {
+      print(err);
+    }
     Navigator.push(
-      context, 
+      context,
       MaterialPageRoute(
-        builder: (context) => Chat(
-          user: user,
-        ),
+        builder: (context) => Chat(id_user: id_user),
       ),
     );
   }
 
-  void createUserMS() async {
-    String email;
-    String password;
-    Map data = {
-      'email': email,
-      'password': password
-    };
+  void saveUserId(user_id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('user_id', user_id);
+    prefs.setString('test', "jejejejejejej");
   }
 
   @override
@@ -173,7 +224,18 @@ class _RegistrationState extends State<Registration> {
             height: 40.0,
           ),
           TextField(
-            onChanged: (value) => email = value,
+            onChanged: (value) => _username = value,
+            decoration: InputDecoration(
+              hintText: "Ingrese su nombre de usuario",
+              border: const OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.text,
+          ),
+          SizedBox(
+            height: 40.0,
+          ),
+          TextField(
+            onChanged: (value) => _email = value,
             decoration: InputDecoration(
               hintText: "Ingrese su correo electrónico",
               border: const OutlineInputBorder(),
@@ -186,7 +248,7 @@ class _RegistrationState extends State<Registration> {
           TextField(
             autocorrect: false,
             obscureText: true,
-            onChanged: (value) => password = value,
+            onChanged: (value) => _password = value,
             decoration: InputDecoration(
               hintText: "Ingrese su contraseña",
               border: const OutlineInputBorder(),
@@ -194,8 +256,8 @@ class _RegistrationState extends State<Registration> {
           ),
           CustomButton(
             text: "Registro",
-            callback: () async{
-              await registerUser();
+            callback: () async {
+              await createUserMSAuth();
             },
           )
         ],
@@ -218,15 +280,14 @@ class _LoginState extends State<Login> {
 
   Future<void> logUser() async {
     FirebaseUser user = (await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password
-    )).user;
-    
+            email: email, password: password))
+        .user;
+
     Navigator.push(
-      context, 
+      context,
       MaterialPageRoute(
         builder: (context) => Chat(
-          user: user,
+          id_user: user,
         ),
       ),
     );
@@ -275,7 +336,7 @@ class _LoginState extends State<Login> {
           ),
           CustomButton(
             text: "Iniciar sesión",
-            callback: () async{
+            callback: () async {
               await logUser();
             },
           )
@@ -287,15 +348,50 @@ class _LoginState extends State<Login> {
 
 class Chat extends StatefulWidget {
   static const String id = "chat";
-  final FirebaseUser user;
-  const Chat({Key key, this.user}) : super(key: key);
+  final id_user;
+  const Chat({Key key, this.id_user}) : super(key: key);
   @override
   _ChatState createState() => _ChatState();
 }
 
 class _ChatState extends State<Chat> {
+
+  int id_user;
+  
   @override
-  Widget build(BuildContext context) {
-    return Container();
+
+  void initState(){
+    super.initState();   
   }
+
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        CustomButton(
+          text: "wtf",
+          callback: () {
+            getUserID();
+            debug();
+          },
+        ),
+      ],
+    );
+  }
+
+  void debug() async{
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String debug = prefs.getString('username');
+    int id_user = prefs.getInt('id_user');
+    print(id_user);
+    print(debug);
+  }
+
+  getUserID() async{
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    print(prefs.getString('id_user'));
+    id_user = prefs.getInt('id_user');
+    
+  }
+
 }
