@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' as prefix2;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -104,17 +105,6 @@ class MyHomePage extends StatelessWidget {
               )
             ],
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              CustomButton(
-                text: "Saltarse todo xd",
-                callback: () {
-                  Navigator.of(context).pushNamed(Chat.id);
-                },
-              )
-            ],
-          )
         ],
       ),
     );
@@ -273,18 +263,23 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   Dio jotaro = new Dio();
   Response response;
+  Response response2;
   String _username = "";
   String _email = "";
   String _password = "";
-  var id_user;
+  int id_user;
   void loginMSAuth() async {
     try {
       response = await jotaro.get(
           "http://192.168.0.17:3000/api/signin/" + _username + "/" + _password);
+      response2 = await jotaro.get(
+          "http://192.168.0.17:4002/users/findByUsername?username=" +
+              _username);
+      id_user = response2.data['id'];
+      print(id_user);
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      prefs.remove('username');
-      prefs.remove('id_user');
       prefs.setString('username', _username);
+      prefs.setInt('id_user', id_user);
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -379,10 +374,16 @@ class _ChatState extends State<Chat> {
     super.initState();
   }
 
+  saveUserID(id) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setInt('id_user2', id);
+  }
+
   final String query = r"""
   query{
     allUsers{
       username
+      id
     }
   }
   """;
@@ -412,8 +413,17 @@ class _ChatState extends State<Chat> {
             itemCount: all.length,
             itemBuilder: (context, index) {
               var title = all[index]['username'];
+              var id = all[index]['id'];
               return prefix1.GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    saveUserID(id);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Chatcito(),
+                      ),
+                    );
+                  },
                   child: prefix1.Container(
                       width: double.maxFinite,
                       height: 77,
@@ -431,14 +441,15 @@ class _ChatState extends State<Chat> {
                                           image: AssetImage(
                                               "assets/images/pug.png"))),
                                   prefix1.Column(
-                                    crossAxisAlignment: prefix1.CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        prefix1.CrossAxisAlignment.start,
                                     children: <Widget>[
                                       Text(
                                         title,
                                         style: prefix1.TextStyle(
-                                          fontSize: 25,
-                                          fontWeight: prefix1.FontWeight.bold
-                                        ),
+                                            fontSize: 25,
+                                            fontWeight:
+                                                prefix1.FontWeight.bold),
                                       )
                                     ],
                                   ),
@@ -454,36 +465,223 @@ class _ChatState extends State<Chat> {
     ));
   }
 
-  void debug() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String debug = prefs.getString('username');
-    int id_user = prefs.getInt('id_user');
-    print(id_user);
-    print(debug);
-  }
-
   getUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String username = prefs.getString('username');
     int id_user = prefs.getInt('id_user');
-    return username;
+    return id_user;
   }
 }
 
 class Chatcito extends StatefulWidget {
   static const String id = "chatcito";
   @override
-  _ChatState createState() => _ChatState();
+  _ChatcitoState createState() => _ChatcitoState();
 }
 
+class _ChatcitoState extends State<Chatcito> {
+  final Firestore _firestore = Firestore.instance;
 
-class _Chatcito extends State<Chatcito> {
+  prefix1.TextEditingController messagecontroller =
+      prefix1.TextEditingController();
+  prefix1.ScrollController scrollController = prefix1.ScrollController();
 
-  
+  var username1;
+  var username2;
+
+  var help;
+
+  getUsername1() async {
+    Response response;
+    Dio jotaro = new Dio();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int id_user = prefs.getInt('id_user');
+    response = await jotaro
+        .get("http://192.168.0.17:4002/users/" + id_user.toString());
+    setState(() {
+      username1 = response.data['username'];
+    });
+    print("username1 chatcito ${username1}");
+  }
+
+  getUsername2() async {
+    Response response;
+    Dio jotaro = new Dio();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int id_user2 = prefs.getInt('id_user2');
+    response = await jotaro
+        .get("http://192.168.0.17:4002/users/" + id_user2.toString());
+    prefs.setString('username2', response.data['username']);
+    setState(() {
+      username2 = response.data['username'];
+    });
+    print("username2 chatcito ${username2}");
+  }
+
+  Future<void> callback() async {
+    Response response, response1;
+    Dio jotaro = new Dio();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int id_user2 = prefs.getInt('id_user2');
+    response = await jotaro
+        .get("http://192.168.0.17:4002/users/" + id_user2.toString());
+    var username2 = response.data['username'];
+    int id_user = prefs.getInt('id_user');
+    response1 = await jotaro
+        .get("http://192.168.0.17:4002/users/" + id_user.toString());
+    var username1 = response1.data['username'];
+    if (messagecontroller.text.length > 0) {
+      await _firestore.collection('chat').add({
+        'text': messagecontroller.text,
+        'from': username1,
+        'to': username2,
+        'date': DateTime.now().toIso8601String().toString(),
+      });
+      messagecontroller.clear();
+      scrollController.animateTo(scrollController.position.maxScrollExtent,
+          curve: Curves.easeOut, duration: const Duration(milliseconds: 300));
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getUsername2();
+    getUsername1();    
+  }
+
+  Widget build(BuildContext context) {
+    return prefix1.Scaffold(
+      appBar: prefix1.AppBar(
+        leading: prefix1.Hero(
+            tag: 'logo',
+            child: prefix1.Container(
+              height: 40,
+              child: Image.asset("assets/images/pug.png"),
+            )),
+        title: Text("PugChat"),
+        actions: <Widget>[
+          prefix1.IconButton(
+              icon: prefix1.Icon(Icons.close),
+              onPressed: () async {
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                prefs.clear();
+                prefix1.Navigator.of(context)
+                    .popUntil((route) => route.isFirst);
+              })
+        ],
+      ),
+      body: prefix1.SafeArea(
+          child: prefix1.Column(
+        mainAxisAlignment: prefix1.MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          prefix1.Expanded(
+              child: prefix1.StreamBuilder<QuerySnapshot>(
+            stream: _firestore.collection('chat').orderBy('date').snapshots(),//_firestore.collection('chat').snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData)
+                return prefix1.Center(
+                  child: prefix1.CircularProgressIndicator(),
+                );
+              List<DocumentSnapshot> docs = snapshot.data.documents;
+
+              List<Widget> messages = docs
+                  .map((doc) => Message(
+                        from: doc.data['from'],
+                        text: doc.data['text'],
+                        me: username1 == doc.data['from'],
+                        date: doc.data['date']
+                      ))
+                  .toList();
+
+              return prefix1.ListView(
+                controller: scrollController,
+                children: <Widget>[
+                  ...messages,
+                ],
+              );
+            },
+          )),
+          prefix1.Container(
+              child: prefix1.Row(
+            children: <Widget>[
+              prefix1.Expanded(
+                child: TextField(
+                    onSubmitted: (value) => callback(),
+                    decoration: new prefix1.InputDecoration(
+                      hintText: username2,
+                      border: const prefix1.OutlineInputBorder(),
+                    ),
+                    autocorrect: true,
+                    controller: messagecontroller),
+              ),
+              SendButton(
+                text: "Enviar",
+                callback: callback,
+              )
+            ],
+          ))
+        ],
+      )),
+    );
+  }
+
+  debug() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int id_user = prefs.getInt('id_user');
+    int id_user2 = prefs.getInt('id_user2');
+    print("id1 = ${id_user}");
+    print("id2 = ${id_user2}");
+  }
+}
+
+class SendButton extends StatelessWidget {
+  final String text;
+  final VoidCallback callback;
+
+  const SendButton({Key key, this.text, this.callback}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    return null;
-  } 
+    return FlatButton(
+      color: Colors.red,
+      onPressed: callback,
+      child: Text(text),
+    );
+  }
+}
+
+class Message extends StatelessWidget {
+  final String from;
+  final String text;
+  final String date;
+  final bool me;
+
+  const Message({Key key, this.from, this.text, this.date, this.me}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        child: prefix1.Column(
+      crossAxisAlignment: me
+          ? prefix1.CrossAxisAlignment.end
+          : prefix1.CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          from,
+        ),
+        prefix1.Material(
+          color: me ? Colors.red : Colors.deepPurple,
+          borderRadius: prefix1.BorderRadius.circular(10.0),
+          elevation: 6.0,
+          child: prefix1.Container(
+            padding: prefix1.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+            child: Text(
+              text,
+            ),
+          ),
+        )
+      ],
+    ));
+  }
 }
