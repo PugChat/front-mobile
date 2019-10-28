@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart' as prefix1;
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:graphql_flutter/graphql_flutter.dart' as prefix0;
 import 'package:dio/dio.dart';
@@ -159,17 +160,13 @@ class _RegistrationState extends State<Registration> {
   String _email = "";
   String _password = "";
 
-  var id_user;
+  int id_user = 0;
 
   void createUserMSAuth() async {
     try {
       response = await jotaro.post(
           "http://192.168.0.17:3000/signup/" + _username + "/" + _password);
       print(response);
-    } catch (err) {
-      print(err);
-    }
-    try {
       response =
           await jotaro.post("http://192.168.0.17:4002/users/create", data: {
         "username": _username,
@@ -184,22 +181,22 @@ class _RegistrationState extends State<Registration> {
       print(id_user);
       SharedPreferences prefs = await SharedPreferences.getInstance();
       prefs.setString('username', _username);
-      prefs.setString('id_user', id_user);
+      prefs.setInt('id_user', id_user);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Chat(),
+        ),
+      );
     } catch (err) {
       print(err);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Registration(),
+        ),
+      );
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Chat(id_user: id_user),
-      ),
-    );
-  }
-
-  void saveUserId(user_id) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('user_id', user_id);
-    prefs.setString('test', "jejejejejejej");
   }
 
   @override
@@ -273,24 +270,47 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  String email;
-  String password;
-
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  Future<void> logUser() async {
-    FirebaseUser user = (await _auth.signInWithEmailAndPassword(
-            email: email, password: password))
-        .user;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Chat(
-          id_user: user,
+  Dio jotaro = new Dio();
+  Response response;
+  String _username = "";
+  String _email = "";
+  String _password = "";
+  var id_user;
+  void loginMSAuth() async {
+    try {
+      response = await jotaro.get(
+          "http://192.168.0.17:3000/api/signin/" + _username + "/" + _password);
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.remove('username');
+      prefs.remove('id_user');
+      prefs.setString('username', _username);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Chat(),
         ),
-      ),
-    );
+      );
+    } catch (err) {
+      print(err);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Registration(),
+        ),
+      );
+    }
+    try {
+      response = await jotaro.post("", data: {
+        "username": _username,
+        "password": _password,
+        "mail": _email,
+        "verification": true,
+        "active": true,
+        "password_confirmation": _password
+      });
+    } catch (err) {
+      print(err);
+    }
   }
 
   @override
@@ -315,9 +335,9 @@ class _LoginState extends State<Login> {
             height: 40.0,
           ),
           TextField(
-            onChanged: (value) => email = value,
+            onChanged: (value) => _username = value,
             decoration: InputDecoration(
-              hintText: "Ingrese su correo electrónico",
+              hintText: "Ingrese su usuario",
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
@@ -328,7 +348,7 @@ class _LoginState extends State<Login> {
           TextField(
             autocorrect: false,
             obscureText: true,
-            onChanged: (value) => password = value,
+            onChanged: (value) => _password = value,
             decoration: InputDecoration(
               hintText: "Ingrese su contraseña",
               border: const OutlineInputBorder(),
@@ -337,7 +357,7 @@ class _LoginState extends State<Login> {
           CustomButton(
             text: "Iniciar sesión",
             callback: () async {
-              await logUser();
+              await loginMSAuth();
             },
           )
         ],
@@ -348,38 +368,92 @@ class _LoginState extends State<Login> {
 
 class Chat extends StatefulWidget {
   static const String id = "chat";
-  final id_user;
-  const Chat({Key key, this.id_user}) : super(key: key);
   @override
   _ChatState createState() => _ChatState();
 }
 
 class _ChatState extends State<Chat> {
-
-  int id_user;
-  
   @override
-
-  void initState(){
-    super.initState();   
+  void initState() {
+    super.initState();
   }
+
+  final String query = r"""
+  query{
+    allUsers{
+      username
+    }
+  }
+  """;
 
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        CustomButton(
-          text: "wtf",
-          callback: () {
-            getUserID();
-            debug();
-          },
-        ),
-      ],
-    );
+    return Scaffold(
+        body: prefix0.Query(
+      options: QueryOptions(document: query),
+      builder: (QueryResult result,
+          {VoidCallback refetch, FetchMore fetchMore}) {
+        if (result.errors != null) {
+          return Text(result.errors.toString());
+        }
+        if (result.loading) {
+          return Text("Cargando...");
+        }
+        final List<LazyCacheMap> all =
+            (result.data['allUsers'] as List<dynamic>).cast<LazyCacheMap>();
+        var aux = new List(all.length);
+
+        for (var i = 1; i < all.length; i++) {
+          aux[i] = all[i]['username'];
+          print(aux[i]);
+        }
+        return prefix1.Container(
+          child: prefix1.ListView.builder(
+            itemCount: all.length,
+            itemBuilder: (context, index) {
+              var title = all[index]['username'];
+              return prefix1.GestureDetector(
+                  onTap: () {},
+                  child: prefix1.Container(
+                      width: double.maxFinite,
+                      height: 77,
+                      child: prefix1.Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: prefix1.Column(
+                            children: <Widget>[
+                              Row(
+                                children: <Widget>[
+                                  prefix1.Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: Image(
+                                          width: 45,
+                                          height: 45,
+                                          image: AssetImage(
+                                              "assets/images/pug.png"))),
+                                  prefix1.Column(
+                                    crossAxisAlignment: prefix1.CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        title,
+                                        style: prefix1.TextStyle(
+                                          fontSize: 25,
+                                          fontWeight: prefix1.FontWeight.bold
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                  Spacer(),
+                                ],
+                              )
+                            ],
+                          ))));
+            },
+          ),
+        );
+      },
+    ));
   }
 
-  void debug() async{
+  void debug() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String debug = prefs.getString('username');
     int id_user = prefs.getInt('id_user');
@@ -387,11 +461,11 @@ class _ChatState extends State<Chat> {
     print(debug);
   }
 
-  getUserID() async{
+  getUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    print(prefs.getString('id_user'));
-    id_user = prefs.getInt('id_user');
-    
+    String username = prefs.getString('username');
+    int id_user = prefs.getInt('id_user');
+    print(username);
+    print(id_user);
   }
-
 }
