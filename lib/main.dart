@@ -38,7 +38,8 @@ class MyApp extends StatelessWidget {
         MyHomePage.id: (context) => MyHomePage(),
         Registration.id: (context) => Registration(),
         Login.id: (context) => Login(),
-        Chat.id: (context) => Chat()
+        Chat.id: (context) => Chat(),
+        Chatcito.id: (context) => Chatcito(),
       },
     );
   }
@@ -465,7 +466,24 @@ class _ChatState extends State<Chat> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String username = prefs.getString('username');
     int id_user = prefs.getInt('id_user');
-    print(username);
-    print(id_user);
+    return username;
   }
+}
+
+class Chatcito extends StatefulWidget {
+  static const String id = "chatcito";
+  @override
+  _ChatState createState() => _ChatState();
+}
+
+
+class _Chatcito extends State<Chatcito> {
+
+  
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return null;
+  } 
 }
