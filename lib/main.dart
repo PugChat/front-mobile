@@ -41,6 +41,7 @@ class MyApp extends StatelessWidget {
         Login.id: (context) => Login(),
         Chat.id: (context) => Chat(),
         Chatcito.id: (context) => Chatcito(),
+        Usuario.id: (context) => Usuario(),
       },
     );
   }
@@ -138,6 +139,63 @@ class CustomButton extends StatelessWidget {
   }
 }
 
+class Usuario extends StatelessWidget {
+  static const String id = "usuario";
+  String _username = '';
+  String _mail = '';
+  String _photoUrl = '';
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+            title: Text("Pug Chat"),
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Hero(
+                  tag: 'logo',
+                  child: Container(
+                      width: 100.0, child: Image.asset("assets/images/pug.png")),  //"this._photoUrl"
+                ),
+                SizedBox(
+                  height: 50.0,
+                )
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  this._username,
+                  style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 40.0,
+                      color: Colors.white),
+                )
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  this._mail,
+                  style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 40.0,
+                      color: Colors.white),
+                )
+              ],
+            ),
+          ],
+        ),
+    );
+  }
+}
 class Registration extends StatefulWidget {
   static const String id = "registration";
   @override
@@ -368,6 +426,19 @@ class Chat extends StatefulWidget {
   _ChatState createState() => _ChatState();
 }
 
+List<Choice> choices = const <Choice>[
+  const Choice(title: 'User', icon: Icons.settings),
+  const Choice(title: 'Log out', icon: Icons.exit_to_app),
+];
+
+class Choice {
+  const Choice({this.title, this.icon});
+
+  final String title;
+  final IconData icon;
+}
+
+
 class _ChatState extends State<Chat> {
   @override
   void initState() {
@@ -387,34 +458,70 @@ class _ChatState extends State<Chat> {
     }
   }
   """;
+  void onItemMenuPress(Choice choice) {
+    if (choice.title == 'Log out') {
+
+    } else {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => Usuario()));
+    }
+  }
 
   Widget build(BuildContext context) {
     return Scaffold(
+        appBar: AppBar(
+          title: Text("Pug Chat"),
+          actions: <Widget>[
+            PopupMenuButton<Choice>(
+              onSelected: onItemMenuPress,
+              itemBuilder: (BuildContext context) {
+                return choices.map((Choice choice) {
+                  return PopupMenuItem<Choice>(
+                      value: choice,
+                      child: Row(
+                        children: <Widget>[
+                          Icon(
+                            choice.icon,
+                            color: Colors.white,
+                          ),
+                          Container(
+                            width: 10.0,
+                          ),
+                          Text(
+                            choice.title,
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ));
+                }).toList();
+              },
+            ),
+          ],
+        ),
         body: prefix0.Query(
-      options: QueryOptions(document: query),
-      builder: (QueryResult result,
-          {VoidCallback refetch, FetchMore fetchMore}) {
-        if (result.errors != null) {
-          return Text(result.errors.toString());
-        }
-        if (result.loading) {
-          return Text("Cargando...");
-        }
-        final List<LazyCacheMap> all =
-            (result.data['allUsers'] as List<dynamic>).cast<LazyCacheMap>();
-        var aux = new List(all.length);
+          options: QueryOptions(document: query),
+          builder: (QueryResult result,
+            {VoidCallback refetch, FetchMore fetchMore}) {
+          if (result.errors != null) {
+            return Text(result.errors.toString());
+          }
+          if (result.loading) {
+            return Text("Cargando...");
+          }
+          final List<LazyCacheMap> all =
+              (result.data['allUsers'] as List<dynamic>).cast<LazyCacheMap>();
+          var aux = new List(all.length);
 
-        for (var i = 1; i < all.length; i++) {
-          aux[i] = all[i]['username'];
-          print(aux[i]);
-        }
-        return prefix1.Container(
-          child: prefix1.ListView.builder(
-            itemCount: all.length,
-            itemBuilder: (context, index) {
+          for (var i = 1; i < all.length; i++) {
+            aux[i] = all[i]['username'];
+            print(aux[i]);
+          }
+          return prefix1.Container(
+            child: prefix1.ListView.builder(
+              itemCount: all.length,
+              itemBuilder: (context, index) {
               var title = all[index]['username'];
               var id = all[index]['id'];
-              return prefix1.GestureDetector(
+                return prefix1.GestureDetector(
                   onTap: () {
                     saveUserID(id);
                     Navigator.push(
@@ -468,6 +575,7 @@ class _ChatState extends State<Chat> {
   getUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String username = prefs.getString('username');
+    String mail = prefs.getString('mail');
     int id_user = prefs.getInt('id_user');
     return id_user;
   }
@@ -575,10 +683,10 @@ class _ChatcitoState extends State<Chatcito> {
           child: prefix1.Column(
         mainAxisAlignment: prefix1.MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          prefix1.Expanded(
+            prefix1.Expanded(
               child: prefix1.StreamBuilder<QuerySnapshot>(
-            stream: _firestore.collection('chat').orderBy('date').snapshots(),//_firestore.collection('chat').snapshots(),
-            builder: (context, snapshot) {
+              stream: _firestore.collection('chat').orderBy('date').snapshots(),//_firestore.collection('chat').snapshots(),
+              builder: (context, snapshot) {
               if (!snapshot.hasData)
                 return prefix1.Center(
                   child: prefix1.CircularProgressIndicator(),
@@ -663,20 +771,20 @@ class Message extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
         child: prefix1.Column(
-      crossAxisAlignment: me
-          ? prefix1.CrossAxisAlignment.end
-          : prefix1.CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          from,
-        ),
-        prefix1.Material(
-          color: me ? Colors.red : Colors.deepPurple,
-          borderRadius: prefix1.BorderRadius.circular(10.0),
-          elevation: 6.0,
-          child: prefix1.Container(
-            padding: prefix1.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-            child: Text(
+          crossAxisAlignment: me
+              ? prefix1.CrossAxisAlignment.end
+              : prefix1.CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              from,
+            ),
+            prefix1.Material(
+              color: me ? Colors.red : Colors.deepPurple,
+              borderRadius: prefix1.BorderRadius.circular(10.0),
+              elevation: 6.0,
+              child: prefix1.Container(
+                padding: prefix1.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                child: Text(
               text,
             ),
           ),
@@ -685,3 +793,4 @@ class Message extends StatelessWidget {
     ));
   }
 }
+
