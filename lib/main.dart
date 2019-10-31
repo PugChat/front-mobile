@@ -13,7 +13,7 @@ void main() => runApp(AuxHome());
 class AuxHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final HttpLink httplink = HttpLink(uri: "http://192.168.0.17:5000/graphql");
+    final HttpLink httplink = HttpLink(uri: "http://172.17.0.1:5000/graphql");
     final ValueNotifier<GraphQLClient> client = ValueNotifier<GraphQLClient>(
       GraphQLClient(
         link: httplink as Link,
@@ -156,10 +156,10 @@ class _RegistrationState extends State<Registration> {
   void createUserMSAuth() async {
     try {
       response = await jotaro.post(
-          "http://192.168.0.17:3000/signup/" + _username + "/" + _password);
+          "http://172.17.0.1:3000/signup/" + _username + "/" + _password);
       print(response);
       response =
-          await jotaro.post("http://192.168.0.17:4002/users/create", data: {
+          await jotaro.post("http://172.17.0.1:4002/users/create", data: {
         "username": _username,
         "password": _password,
         "mail": _email,
@@ -271,9 +271,9 @@ class _LoginState extends State<Login> {
   void loginMSAuth() async {
     try {
       response = await jotaro.get(
-          "http://192.168.0.17:3000/api/signin/" + _username + "/" + _password);
+          "http://172.17.0.1:3000/api/signin/" + _username + "/" + _password);
       response2 = await jotaro.get(
-          "http://192.168.0.17:4002/users/findByUsername?username=" +
+          "http://172.17.0.1:4002/users/findByUsername?username=" +
               _username);
       id_user = response2.data['id'];
       print(id_user);
@@ -497,7 +497,7 @@ class _ChatcitoState extends State<Chatcito> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int id_user = prefs.getInt('id_user');
     response = await jotaro
-        .get("http://192.168.0.17:4002/users/" + id_user.toString());
+        .get("http://172.17.0.1:4002/users/" + id_user.toString());
     setState(() {
       username1 = response.data['username'];
     });
@@ -510,7 +510,7 @@ class _ChatcitoState extends State<Chatcito> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int id_user2 = prefs.getInt('id_user2');
     response = await jotaro
-        .get("http://192.168.0.17:4002/users/" + id_user2.toString());
+        .get("http://172.17.0.1:4002/users/" + id_user2.toString());
     prefs.setString('username2', response.data['username']);
     setState(() {
       username2 = response.data['username'];
@@ -524,12 +524,14 @@ class _ChatcitoState extends State<Chatcito> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int id_user2 = prefs.getInt('id_user2');
     response = await jotaro
-        .get("http://192.168.0.17:4002/users/" + id_user2.toString());
+        .get("http://172.17.0.1:4002/users/" + id_user2.toString());
     var username2 = response.data['username'];
+    var id1 = response.data['id'];
     int id_user = prefs.getInt('id_user');
     response1 = await jotaro
-        .get("http://192.168.0.17:4002/users/" + id_user.toString());
+        .get("http://172.17.0.1:4002/users/" + id_user.toString());
     var username1 = response1.data['username'];
+    var id2 = response.data['id'];
     if (messagecontroller.text.length > 0) {
       await _firestore.collection('chat').add({
         'text': messagecontroller.text,
@@ -537,10 +539,18 @@ class _ChatcitoState extends State<Chatcito> {
         'to': username2,
         'date': DateTime.now().toIso8601String().toString(),
       });
-      messagecontroller.clear();
       scrollController.animateTo(scrollController.position.maxScrollExtent,
           curve: Curves.easeOut, duration: const Duration(milliseconds: 300));
+      response =
+          await jotaro.post("http://172.17.0.1:8080/messages/", data: {
+        "emisor": 2,
+        "receptor": 1,
+        "mensaje": messagecontroller.text.toString(),
+        "date": DateTime.now().toIso8601String()
+      });
+      messagecontroller.clear();
     }
+
   }
 
   @override
